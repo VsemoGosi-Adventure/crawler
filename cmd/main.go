@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/VsemoGosi-Adventure/crawler/internal/config"
 	"github.com/VsemoGosi-Adventure/crawler/internal/producer"
+	"github.com/VsemoGosi-Adventure/crawler/internal/provider"
+	"github.com/VsemoGosi-Adventure/crawler/internal/service"
 )
 
 func main() {
@@ -16,16 +19,19 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	producer := producer.NewProducer(cfg.ProducerConfig)
-	defer producer.Close()
+	prod := producer.NewProducer(cfg.ProducerConfig)
+	defer prod.Close()
 
-	// crawlerSvc := service.NewCrawlerService(
-	// 	producer,
+	timepadClient := provider.NewTimepadClient(cfg.TimepadCity, cfg.TimepadToken)
 
-	// )
+	crawlerSvc := service.NewCrawlerService(
+		prod,
+		cfg.CrawlerInterval,
+		timepadClient,
+	)
 
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -33,6 +39,8 @@ func main() {
 	go func() {
 		<-sigChan
 		log.Println("Shutdown signal received...")
-		// cancel()
+		cancel()
 	}()
+
+	crawlerSvc.Start(ctx)
 }

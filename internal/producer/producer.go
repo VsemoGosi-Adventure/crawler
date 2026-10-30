@@ -21,7 +21,11 @@ type Producer struct {
 
 func NewProducer(cfg config.ProducerConfig) *Producer {
 	return &Producer{
-		writer: &kafka.Writer{},
+		writer: &kafka.Writer{
+			Addr:     kafka.TCP(cfg.Brokers...),
+			Topic:    cfg.Topic,
+			Balancer: &kafka.LeastBytes{},
+		},
 	}
 }
 
